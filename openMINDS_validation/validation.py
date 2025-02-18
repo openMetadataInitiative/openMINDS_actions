@@ -41,8 +41,6 @@ class InstanceValidator(object):
         instance_folder = self.instance['@id'].split('/')[-2]
         plural_instance_folder = instance_folder + 's' if not instance_folder.endswith('s') else instance_folder
         if self.subfolder != plural_instance_folder:
-            print(plural_instance_folder)
-            print(self.subfolder)
             raise ValueError(f'Instance in wrong subfolder, it should be in "{plural_instance_folder}".')
 
     def check_missmatch_id_type(self):
@@ -78,7 +76,6 @@ class InstanceValidator(object):
 
         def _check_instance_id_convention(value):
             if value is not None and '@id' in value:
-                print(value['@id'])
                 if ' ' in value['@id']:
                     raise ValueError(f'White space detected for @id: "{value["@id"]}".')
 

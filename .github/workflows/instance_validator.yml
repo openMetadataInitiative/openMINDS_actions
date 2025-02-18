@@ -24,7 +24,7 @@ jobs:
       - name: Checkout openMINDS_actions repository
         uses: actions/checkout@v3
         with:
-          repository: Raphael-Gazzotti/openMINDS_actions
+          repository: openMetadataInitiative/openMINDS_actions
           ref: main
           path: openMINDS_actions # Checkout in a dedicated folder
 

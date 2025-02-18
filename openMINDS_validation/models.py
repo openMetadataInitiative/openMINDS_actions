@@ -1,4 +1,3 @@
-import os
 from openMINDS_validation.utils import load_json, download_file
 
 
