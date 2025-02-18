@@ -1,0 +1,53 @@
+name: schema_validation
+
+on:
+  - pull_request
+  - workflow_dispatch
+
+jobs:
+  validate-instance:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch full history to compare against the base branch
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.13
+
+      - name: Validate instance
+        run: |
+          git checkout HEAD
+          git diff --name-only --diff-filter=AM HEAD^ HEAD | grep '\.jsonld' > changed_files.txt || true
+          
+          validation_failed=false
+          
+          if [ -s changed_files.txt ]; then
+            while IFS= read -r file; do
+              validation_output=$(python ../validate_instance.py "$file" 2>&1 || true)
+              echo "$validation_output"
+              
+              if echo "$validation_output" | grep -E "SyntaxError|ValueError|Error|Invalid" > /dev/null; then
+                echo "❌ Validation failed for $file"
+                validation_failed=true
+              else
+                echo "✅ Validation passed for $file"
+              fi
+            done < changed_files.txt
+            # If any validation failed, exit with a non-zero status
+            if [ "$validation_failed" = true ]; then
+              echo "❌ Some instances failed validation."
+              exit 1
+            else
+              echo "✅ All instances passed validation."
+            fi
+          else
+            echo "No instance to validate."
+          fi
+
+        shell: bash
