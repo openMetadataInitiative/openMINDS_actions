@@ -21,6 +21,12 @@ jobs:
         with:
           python-version: 3.13
 
+      - name: Checkout openMINDS_actions repository
+        uses: actions/checkout@v3
+        with:
+          repository: Raphael-Gazzotti/openMINDS_actions
+          ref: main
+
       - name: Validate instance
         run: |
           git checkout HEAD
