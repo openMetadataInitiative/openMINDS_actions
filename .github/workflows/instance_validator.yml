@@ -1,4 +1,4 @@
-name: schema_validation
+name: Instance Validator
 
 on:
   - pull_request
