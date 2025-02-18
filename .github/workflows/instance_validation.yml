@@ -29,7 +29,7 @@ jobs:
           
           if [ -s changed_files.txt ]; then
             while IFS= read -r file; do
-              validation_output=$(python ../validate_instance.py "$file" 2>&1 || true)
+              validation_output=$(python validate_instance.py "$file" 2>&1 || true)
               echo "$validation_output"
               
               if echo "$validation_output" | grep -E "SyntaxError|ValueError|Error|Invalid" > /dev/null; then
