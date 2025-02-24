@@ -59,7 +59,7 @@ class InstanceValidator(object):
     def __init__(self, absolute_path):
         self.absolute_path = absolute_path
         self._tuple_path = PurePath(absolute_path).parts
-        self.version = 'latest' ##self._tuple_path[1]
+        self.version = self._tuple_path[1]
         self.subfolder = self._tuple_path[2] if self._tuple_path[2] != 'terminologies' else self._tuple_path[3]
         self.file_name = Path(absolute_path).stem
 
