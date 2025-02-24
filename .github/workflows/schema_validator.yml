@@ -1,4 +1,4 @@
-name: Instance Validator
+name: Schema Validator
 
 on:
   workflow_call:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  validate-instance:
+  validate-schema:
     runs-on: ubuntu-latest
 
     steps:
@@ -28,17 +28,17 @@ jobs:
           ref: main
           path: openMINDS_actions # Checkout in a dedicated folder
 
-      - name: Validate instance
+      - name: Validate schema
         run: |
           git checkout HEAD
-          git diff --name-only --diff-filter=AM HEAD^ HEAD | grep '\.jsonld' > changed_files.txt || true
+          git diff --name-only --diff-filter=AM HEAD^ HEAD | grep '\.json' > changed_files.txt || true
           
           validation_failed=false
           pip install -r openMINDS_actions/requirements.txt
           
           if [ -s changed_files.txt ]; then
             while IFS= read -r file; do
-              validation_output=$(python openMINDS_actions/validate_instance.py "$file" 2>&1 || true)
+              validation_output=$(python openMINDS_actions/validate_schema.py "$file" 2>&1 || true)
               echo "$validation_output"
               
               if echo "$validation_output" | grep -E "SyntaxError|ValueError|Error|Invalid|JSONDecodeError" > /dev/null; then
@@ -50,13 +50,13 @@ jobs:
             done < changed_files.txt
             # If any validation failed, exit with a non-zero status
             if [ "$validation_failed" = true ]; then
-              echo "❌ Some instances failed validation."
+              echo "❌ Some schemas failed validation."
               exit 1
             else
-              echo "✅ All instances passed validation."
+              echo "✅ All schemas passed validation."
             fi
           else
-            echo "No instance to validate."
+            echo "No schema to validate."
           fi
 
         shell: bash
