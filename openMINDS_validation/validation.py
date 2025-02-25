@@ -11,20 +11,30 @@ class SchemaValidator(object):
         self.schema = load_json(absolute_path)
 
         self.version_file = Versions("./versions.json").versions
-        self._type_schema_name = re.split("[:/]", self.schema['_type'])[-1]
 
     def check_required(self):
         """
         Validate required properties against the properties defined in the schema definition.
         """
-        # TODO Will not fully work for schema templates (some schemas need to be extended)
-        if 'required' in self.schema:
-            for required_property in self.schema['required']:
-                if required_property not in self.schema['properties'].keys():
-                    if '_extends' in self.schema:
-                        print(f'Warning: Missing required property "{required_property}", check the extended schema "{self.schema["_extends"]}".')
-                        return
-                    raise SyntaxError(f'Missing required property "{required_property}" in the schema definition.')
+        def _check_required_extends(extends_value, required_property):
+            path_prefix_extends = './sources' if extends_value.startswith("/") else './schemas/'
+            path_extends_schema = path_prefix_extends + extends_value
+            extended_schema = load_json(path_extends_schema)
+            if required_property not in extended_schema['properties']:
+                if '_extends' in extended_schema:
+                    return _check_required_extends(extended_schema['_extends'], required_property)
+                raise SyntaxError(f'Missing required property "{required_property}" in the schema definition.')
+            return
+
+        if 'required' not in self.schema:
+            return
+
+        for required_property in self.schema['required']:
+            if required_property not in self.schema['properties'].keys():
+                if '_extends' in self.schema:
+                    _check_required_extends(self.schema['_extends'], required_property)
+                    continue
+                raise SyntaxError(f'Missing required property "{required_property}" in the schema definition.')
 
     def check_attype(self):
         """
@@ -32,8 +42,9 @@ class SchemaValidator(object):
             - First character of _type is in uppercase.
         """
         if '_type' in self.schema:
-            if not self._type_schema_name[0].isupper():
-                raise ValueError(f'First character of _type "{self._type_schema_name}" should be uppercase.')
+            type_schema_name = re.split("[:/]", self.schema['_type'])[-1]
+            if not type_schema_name[0].isupper():
+                raise ValueError(f'First character of _type "{type_schema_name}" should be uppercase.')
 
     def check_extends(self):
         """
@@ -57,10 +68,9 @@ class SchemaValidator(object):
         """
         Run all the tests defined in SchemaValidator.
         """
-        self.check_required()
         self.check_attype()
         self.check_extends()
-
+        self.check_required()
 
 class InstanceValidator(object):
     def __init__(self, absolute_path):
