@@ -1,7 +1,7 @@
 import re
 from pathlib import Path, PurePath
 
-from openMINDS_validation.utils import load_json
+from openMINDS_validation.utils import load_json, clone_sources_with_specs
 from openMINDS_validation.models import VocabManager, Versions
 
 
@@ -10,6 +10,7 @@ class SchemaValidator(object):
         self.absolute_path = absolute_path
         self.schema = load_json(absolute_path)
 
+        self.version_file = Versions("./versions.json").versions
         self._type_schema_name = re.split("[:/]", self.schema['_type'])[-1]
 
     def check_required(self):
@@ -27,7 +28,7 @@ class SchemaValidator(object):
 
     def check_attype(self):
         """
-        Validate the format of the @type in the schema definition:
+        Validate the format of the _type in the schema definition:
             - First character of _type is in uppercase.
         """
         if '_type' in self.schema:
@@ -35,16 +36,22 @@ class SchemaValidator(object):
                 raise ValueError(f'First character of _type "{self._type_schema_name}" should be uppercase.')
 
     def check_extends(self):
-        if '_extends' in self.schema:
-            if self.schema['_extends'].startswith("/"):
-                # TODO download the schema/schema repository to check if the template exists
-                pass
-            else:
-                path_extends_schema = '/schemas/' + self.schema['_extends']
-                try:
-                    file = open(path_extends_schema, 'r')
-                except FileNotFoundError as e:
-                    raise ValueError(f'Schema not found for the property _extends at "{path_extends_schema}".')
+        """
+        Validate existence of schema for the _extends property.
+        """
+        if '_extends' not in self.schema:
+            return
+
+        path_prefix_extends = './sources' if self.schema['_extends'].startswith("/") else './schemas/'
+        path_extends_schema = path_prefix_extends + self.schema['_extends']
+
+        if path_prefix_extends == './sources':
+            clone_sources_with_specs(self.version_file["latest"]["modules"])
+
+        try:
+            file = open(path_extends_schema, 'r')
+        except FileNotFoundError:
+            raise ValueError(f'Schema not found for the property _extends at "{path_extends_schema}".')
 
     def validate(self):
         """
