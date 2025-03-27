@@ -2,8 +2,15 @@ name: Schema Validator
 
 on:
   workflow_call:
-  pull_request:
-  workflow_dispatch:
+    inputs:
+       branch:
+         description: 'The branch of the submodule the workflow was triggered for'
+         required: true
+         type: string
+       repository:
+         description: 'The repository of the submodule the workflow was triggered for'
+         required: true
+         type: string
 
 jobs:
   validate-schema:
@@ -38,7 +45,7 @@ jobs:
           
           if [ -s changed_files.txt ]; then
             while IFS= read -r file; do
-              validation_output=$(python openMINDS_actions/validate_schema.py "$file" 2>&1 || true)
+              validation_output=$(python openMINDS_actions/validate_schema.py "$file" ${{ inputs.repository }} ${{ inputs.branch }} 2>&1 || true)
               echo "$validation_output"
               
               if echo "$validation_output" | grep -E "SyntaxError|ValueError|Error|Invalid|JSONDecodeError" > /dev/null; then

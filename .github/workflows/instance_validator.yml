@@ -2,8 +2,6 @@ name: Instance Validator
 
 on:
   workflow_call:
-  pull_request:
-  workflow_dispatch:
 
 jobs:
   validate-instance:
