@@ -1,11 +1,14 @@
 import logging
 import os
+import re
 import shutil
 import json
 import urllib.request
 import urllib.error
 
-from git import Repo
+from git import Repo, Git
+from packaging.utils import canonicalize_version
+from packaging.version import Version
 
 logging.basicConfig(
     level=logging.ERROR,
@@ -58,7 +61,20 @@ def clone_specific_source_with_specs(module_name, module, openMINDS_version):
     if 'commit' in module:
         repo.git.checkout(module['commit'])
     else:
-        repo.git.checkout()
+        # Retrieve relevant commit for 'latest'
+        git_instance = Git()
+        branches = git_instance.ls_remote('--heads', module["repository"]).splitlines()
+        semantic_to_branchname = {}
+        branch_to_commit = {y[1]: y[0] for y in [x.split("\trefs/heads/") for x in branches] if
+                            re.match("v[0-9]+.*", y[1])}
+        for branch_name in list(branch_to_commit.keys()):
+            semantic = canonicalize_version(branch_name)
+            semantic = f"{semantic}.0" if "." not in semantic else semantic
+            semantic_to_branchname[semantic] = branch_name
+        version_numbers = list(semantic_to_branchname.keys())
+        version_numbers.sort(key=Version, reverse=True)
+        latest_branch_name = semantic_to_branchname[version_numbers[0]]
+        repo.git.checkout(branch_to_commit[latest_branch_name])
 
 def version_key(version: str)->float:
     """ Returns a key for sorting versions in inverse order (except the last version defined as the default value) """
