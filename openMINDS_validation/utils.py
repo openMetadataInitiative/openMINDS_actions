@@ -1,6 +1,8 @@
 import logging
 import os
 import re
+import importlib
+import pkgutil
 import shutil
 import json
 import urllib.request
@@ -61,7 +63,7 @@ def clone_specific_source_with_specs(module_name, module, openMINDS_version):
     if 'commit' in module:
         repo.git.checkout(module['commit'])
     else:
-        # Retrieve relevant commit for 'latest'
+        # Retrieves relevant commit for 'latest'
         git_instance = Git()
         branches = git_instance.ls_remote('--heads', module["repository"]).splitlines()
         semantic_to_branchname = {}
@@ -76,8 +78,24 @@ def clone_specific_source_with_specs(module_name, module, openMINDS_version):
         latest_branch_name = semantic_to_branchname[version_numbers[0]]
         repo.git.checkout(branch_to_commit[latest_branch_name])
 
+def find_openminds_class(package_version, class_name):
+    """
+    Imports a class from any available submodule.
+    """
+    package = importlib.import_module(package_version)
+    for _, submodule_name, _ in pkgutil.iter_modules(package.__path__):
+        try:
+            module = importlib.import_module(f"{package_version}.{submodule_name}")
+            if hasattr(module, class_name):
+                return getattr(module, class_name)
+        except ModuleNotFoundError:
+            continue
+    return None
+
 def version_key(version: str)->float:
-    """ Returns a key for sorting versions in inverse order (except the last version defined as the default value) """
+    """
+    Returns a key for sorting versions in inverse order (except the last version defined as the default value).
+    """
     if version == 'latest':
         # Place "latest" at the end
         return float('inf')

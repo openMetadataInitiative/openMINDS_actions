@@ -2,7 +2,7 @@ import re
 import logging
 from pathlib import Path, PurePath
 
-from openMINDS_validation.utils import VocabManager, Versions, load_json, clone_specific_source_with_specs, version_key
+from openMINDS_validation.utils import VocabManager, Versions, load_json, clone_specific_source_with_specs, version_key, find_openminds_class
 
 logging.basicConfig(
     level=logging.ERROR,
@@ -21,7 +21,7 @@ class SchemaValidator(object):
 
     def check_attype(self):
         """
-        Validate the format of the _type in the schema definition:
+        Validates the format of the _type in the schema definition:
             - First character of _type is in uppercase.
         """
         if '_type' in self.schema:
@@ -31,7 +31,7 @@ class SchemaValidator(object):
 
     def check_extends(self):
         """
-        Validate existence of schema for the _extends property.
+        Validates the existence of schema for the _extends property.
         """
         if '_extends' not in self.schema:
             return
@@ -69,7 +69,7 @@ class SchemaValidator(object):
 
     def check_required(self):
         """
-        Validate required properties against the properties defined in the schema definition.
+        Validates required properties against the properties defined in the schema definition.
         """
         def _check_required_extends(extends_value, required_property, openMINDS_build_version=self.openMINDS_build_version):
             path_prefix_extends = f"./sources/{openMINDS_build_version}" if extends_value.startswith("/") else './schemas/'
@@ -93,7 +93,7 @@ class SchemaValidator(object):
 
     def validate(self):
         """
-        Run all the tests defined in SchemaValidator.
+        Runs all the tests defined in SchemaValidator.
         """
         self.check_attype()
         self.check_extends()
@@ -115,7 +115,7 @@ class InstanceValidator(object):
 
     def check_atid_convention(self):
         """
-        Validate against:
+        Validates against:
             - White space in @id and embedded @id.
             - Differences between file name and @id.
         """
@@ -142,7 +142,7 @@ class InstanceValidator(object):
 
     def check_missmatch_id_type(self):
         """
-        Validate against:
+        Validates against:
             - missing @id/@type.
             - @type not found in vocab for the given version.
             - namespace of @type.
@@ -166,10 +166,9 @@ class InstanceValidator(object):
         if expected_type_name != self._type_schema_name:
             logging.error(f'Mismatch between @id schema name "{self._id_schema_name}" and @type schema name "{self._type_schema_name}".')
 
-    # TODO check if required and optional properties are included and their values
-    def check_property(self):
+    def check_property_existence(self):
         """
-        Validate instance properties against the vocabulary for the given version and type.
+        Validates instance properties against the vocabulary for the given version and type.
         """
         for property in self.instance:
             if property in ('@context', '@id', '@type'):
@@ -180,6 +179,27 @@ class InstanceValidator(object):
 
             if self.instance['@type'] not in self.vocab.vocab_properties[property]["usedIn"][self.version]:
                 logging.error(f'Property "{property}" not available for type "{self.instance["@type"]}" in version "{self.version}".')
+
+    def check_property_constraint(self):
+        """
+        Validates the presence and values of required and optional properties in the instance.
+        """
+        # TODO check nested properties
+        openminds_class = find_openminds_class(f"openminds.{self.version}", self._type_schema_name)
+        openminds_class_properties = getattr(openminds_class, 'properties')
+        required_properties = [p.path for p in openminds_class_properties if p.required == True]
+        optional_properties = list(set([p.path for p in openminds_class_properties]) - set(required_properties))
+
+        for required_property in required_properties:
+            if required_property not in self.instance:
+                logging.error(f'Missing required property "{required_property}".')
+            if required_property in self.instance and self.instance[required_property] in (None, '', ' '):
+                logging.error(f'Required property "{required_property}" is not defined.')
+        for optional_property in optional_properties:
+            if optional_property not in self.instance:
+                logging.error(f'Missing optional property "{optional_property}".')
+            if optional_property in self.instance and self.instance[optional_property] in ('', ' '):
+                logging.info(f'Unexpected value "{self.instance[optional_property]}" for "{optional_property}".')
 
     def check_minimal_jsonld_structure(self):
         """
@@ -200,4 +220,5 @@ class InstanceValidator(object):
         self.check_minimal_jsonld_structure()
         self.check_atid_convention()
         self.check_missmatch_id_type()
-        self.check_property()
+        self.check_property_existence()
+        self.check_property_constraint()
