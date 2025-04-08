@@ -218,14 +218,14 @@ class InstanceValidator(object):
 
         for required_property in required_properties:
             if required_property not in instance:
-                logging.error(f'Missing required property "{required_property}", {instance_type} {instance}.')
+                logging.error(f'Missing required property "{required_property}".')
             elif required_property in instance and instance[required_property] in (None, '', ' '):
                 logging.error(f'Required property "{required_property}" is not defined.')
             if required_property in instance:
                 self._nested_instance(instance[required_property], self.check_property_constraint, instance_type)
         for optional_property in optional_properties:
             if optional_property not in instance:
-                logging.error(f'Missing optional property "{optional_property}", {instance_type}.')
+                logging.error(f'Missing optional property "{optional_property}".')
             elif optional_property in instance and instance[optional_property] in ('', ' '):
                 logging.warning(f'Unexpected value "{instance[optional_property]}" for "{optional_property}".')
             if optional_property in instance:
