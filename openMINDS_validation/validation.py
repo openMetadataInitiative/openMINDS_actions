@@ -1,11 +1,15 @@
 import re
 import logging
+import json
+import urllib.request
+import urllib.error
 from pathlib import Path, PurePath
 
-from openMINDS_validation.utils import VocabManager, Versions, load_json, clone_specific_source_with_specs, version_key, find_openminds_class
+from openMINDS_validation.utils import VocabManager, Versions, load_json, get_latest_version_commit, version_key, \
+    find_openminds_class, clone_central, expand_jsonld
 
 logging.basicConfig(
-    level=logging.ERROR,
+    level=logging.WARNING,
     format='%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s'
 )
 
@@ -36,12 +40,13 @@ class SchemaValidator(object):
         if '_extends' not in self.schema:
             return
 
-        path_prefix_extends = './sources' if self.schema['_extends'].startswith("/") else './schemas/'
-
-        if path_prefix_extends == './sources':
+        location = 'remote' if self.schema['_extends'].startswith("/") else './schemas/'
+        # _extends located in other repository
+        if location == 'remote':
             # Needs optimization: finding the corresponding openMINDS version and module
             versions_spec = sorted(list(self.version_file.keys()), key=version_key)
             module_name_extends = self.schema['_extends'].split('/')[1]
+            extends_url = None
             for version_number in versions_spec:
                 m = self.version_file[version_number]["modules"]
                 self.openMINDS_build_version = version_number
@@ -54,41 +59,37 @@ class SchemaValidator(object):
 
                 module = m.get(module_name_extends) or m.get(module_name_extends.upper())
                 if matched_extends_submodule:
-                    clone_specific_source_with_specs(module_name_extends, module, self.openMINDS_build_version)
+                    extends_url = f"https://api.github.com/repos/openMetadataInitiative/{Path(module['repository']).stem}/contents/{'/'.join(self.schema['_extends'].split('/')[2:])}?ref={module['commit']}"
                     break
 
                 # By default, '_extends' is compared against 'latest'
-                if version_number == 'latest':
-                    clone_specific_source_with_specs(module_name_extends, module, self.openMINDS_build_version)
-
-        path_extends_schema = f"{path_prefix_extends}/{self.openMINDS_build_version}{self.schema['_extends']}" if self.openMINDS_build_version else f"{path_prefix_extends}{self.schema['_extends']}"
-        try:
-            file = open(path_extends_schema, 'r')
-        except FileNotFoundError:
-            logging.error(f'Schema not found for the property _extends at "{path_extends_schema}".')
+                elif version_number == 'latest':
+                    commit = get_latest_version_commit(module)
+                    extends_url = f'https://api.github.com/repos/openMetadataInitiative/{Path(module["repository"]).stem}/contents/{"/".join(self.schema["_extends"].split("/")[2:])}?ref={commit}'
+                    break
+            try:
+                with urllib.request.urlopen(extends_url) as response:
+                    json.load(response)
+            except urllib.error.HTTPError:
+                logging.error(f'Schema not found for the property _extends "{self.schema["_extends"]}".')
+        # _extends located in same repository
+        else:
+            # Checks for openMINDS_actions/schemas/_extends
+            path_extends_schema = f"{location}{self.schema['_extends']}"
+            try:
+                open(path_extends_schema, 'r')
+            except FileNotFoundError:
+                logging.error(f'Schema not found for the property _extends at "{self.schema["_extends"]}".')
 
     def check_required(self):
         """
         Validates required properties against the properties defined in the schema definition.
         """
-        def _check_required_extends(extends_value, required_property, openMINDS_build_version=self.openMINDS_build_version):
-            path_prefix_extends = f"./sources/{openMINDS_build_version}" if extends_value.startswith("/") else './schemas/'
-            path_extends_schema = path_prefix_extends + extends_value
-            extended_schema = load_json(path_extends_schema)
-            if required_property not in extended_schema['properties']:
-                if '_extends' in extended_schema:
-                    return _check_required_extends(extended_schema['_extends'], required_property)
-                logging.error(f'Missing required property "{required_property}" in the schema definition.')
-            return
-
         if 'required' not in self.schema:
             return
 
         for required_property in self.schema['required']:
             if required_property not in self.schema['properties'].keys():
-                if '_extends' in self.schema:
-                    _check_required_extends(self.schema['_extends'], required_property)
-                    continue
                 logging.error(f'Missing required property "{required_property}" in the schema definition.')
 
     def validate(self):
@@ -112,6 +113,14 @@ class InstanceValidator(object):
         self.instance = load_json(absolute_path)
         self._type_schema_name = None
         self._id_schema_name = None
+
+    def _nested_instance(self, value, function, instance_type):
+        if isinstance(value, dict):
+            function(value, instance_type)
+
+        elif isinstance(value, list):
+            for item in value:
+                self._nested_instance(item, function, instance_type)
 
     def check_atid_convention(self):
         """
@@ -166,40 +175,61 @@ class InstanceValidator(object):
         if expected_type_name != self._type_schema_name:
             logging.error(f'Mismatch between @id schema name "{self._id_schema_name}" and @type schema name "{self._type_schema_name}".')
 
-    def check_property_existence(self):
+    def check_property_existence(self, instance=None, instance_type=None):
         """
         Validates instance properties against the vocabulary for the given version and type.
         """
-        for property in self.instance:
+        instance = instance if instance is not None else self.instance
+        instance_type = instance_type if instance_type is not None else instance.get('@type')
+
+        # Skip validation if no type is defined
+        if not instance_type:
+            return
+
+        for property in instance:
             if property in ('@context', '@id', '@type'):
                 continue
-
-            if property not in self.vocab.vocab_properties:
+            elif property not in self.vocab.vocab_properties:
                 logging.error(f'Unknown property "{property}".')
+                continue
+            elif instance['@type'] not in self.vocab.vocab_properties[property]["usedIn"][self.version]:
+                logging.error(f'Property "{property}" not available for type "{instance_type}" in version "{self.version}".')
+                continue
+            self._nested_instance(instance[property], self.check_property_existence, instance_type)
 
-            if self.instance['@type'] not in self.vocab.vocab_properties[property]["usedIn"][self.version]:
-                logging.error(f'Property "{property}" not available for type "{self.instance["@type"]}" in version "{self.version}".')
-
-    def check_property_constraint(self):
+    def check_property_constraint(self, instance=None, instance_type=None, openminds_class=None):
         """
         Validates the presence and values of required and optional properties in the instance.
         """
-        # TODO check nested properties
-        openminds_class = find_openminds_class(f"openminds.{self.version}", self._type_schema_name)
-        openminds_class_properties = getattr(openminds_class, 'properties')
-        required_properties = [p.path for p in openminds_class_properties if p.required == True]
-        optional_properties = list(set([p.path for p in openminds_class_properties]) - set(required_properties))
+        instance = instance if instance is not None else self.instance
+        if '@type' in instance:
+            instance_type = instance.get('@type').split('/')[-1]
+        # Skip validation if no @type
+        else:
+            return
+
+        openminds_class = find_openminds_class(self.version, instance_type)
+        openminds_class_properties =  openminds_class["properties"].keys() if 'properties' in openminds_class else None
+        required_properties = openminds_class["required"] if 'required' in openminds_class else None
+        optional_properties = list(set(openminds_class_properties) - set(required_properties))
+
+        if "@context" in instance:
+            instance = expand_jsonld(instance)
 
         for required_property in required_properties:
-            if required_property not in self.instance:
-                logging.error(f'Missing required property "{required_property}".')
-            if required_property in self.instance and self.instance[required_property] in (None, '', ' '):
+            if required_property not in instance:
+                logging.error(f'Missing required property "{required_property}", {instance_type} {instance}.')
+            elif required_property in instance and instance[required_property] in (None, '', ' '):
                 logging.error(f'Required property "{required_property}" is not defined.')
+            if required_property in instance:
+                self._nested_instance(instance[required_property], self.check_property_constraint, instance_type)
         for optional_property in optional_properties:
-            if optional_property not in self.instance:
-                logging.error(f'Missing optional property "{optional_property}".')
-            if optional_property in self.instance and self.instance[optional_property] in ('', ' '):
-                logging.info(f'Unexpected value "{self.instance[optional_property]}" for "{optional_property}".')
+            if optional_property not in instance:
+                logging.error(f'Missing optional property "{optional_property}", {instance_type}.')
+            elif optional_property in instance and instance[optional_property] in ('', ' '):
+                logging.warning(f'Unexpected value "{instance[optional_property]}" for "{optional_property}".')
+            if optional_property in instance:
+                self._nested_instance(instance[optional_property], self.check_property_constraint, instance_type)
 
     def check_minimal_jsonld_structure(self):
         """
@@ -217,6 +247,7 @@ class InstanceValidator(object):
         """
         Run all the tests defined in InstanceValidator.
         """
+        clone_central()
         self.check_minimal_jsonld_structure()
         self.check_atid_convention()
         self.check_missmatch_id_type()
