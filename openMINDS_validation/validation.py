@@ -6,14 +6,14 @@ import urllib.error
 from pathlib import Path, PurePath
 
 from openMINDS_validation.utils import VocabManager, Versions, load_json, get_latest_version_commit, version_key, \
-    find_openminds_class, clone_central, expand_jsonld
+    find_openminds_class, clone_central, expand_jsonld, fetch_remote_schema_extends
 
 logging.basicConfig(
     level=logging.WARNING,
     format='%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s'
 )
 
-class SchemaValidator(object):
+class SchemaTemplateValidator(object):
     def __init__(self, absolute_path, repository=None, branch=None):
         self.absolute_path = absolute_path
         self.schema = load_json(absolute_path)
@@ -68,8 +68,7 @@ class SchemaValidator(object):
                     extends_url = f'https://api.github.com/repos/openMetadataInitiative/{Path(module["repository"]).stem}/contents/{"/".join(self.schema["_extends"].split("/")[2:])}?ref={commit}'
                     break
             try:
-                with urllib.request.urlopen(extends_url) as response:
-                    json.load(response)
+                urllib.request.urlopen(extends_url)
             except urllib.error.HTTPError:
                 logging.error(f'Schema not found for the property _extends "{self.schema["_extends"]}".')
         # _extends located in same repository
@@ -85,16 +84,34 @@ class SchemaValidator(object):
         """
         Validates required properties against the properties defined in the schema definition.
         """
+        def _check_required_extends(extends_value, required_property):
+            # Local case
+            if not extends_value.startswith("/") :
+                path_extends_schema = './schemas/' + extends_value
+                inherited_schema = load_json(path_extends_schema)
+            # Remote case
+            else:
+                inherited_schema = fetch_remote_schema_extends(extends_value, self.version_file, self.openMINDS_build_version)
+
+            if required_property not in inherited_schema['properties']:
+                if '_extends' in inherited_schema:
+                    return _check_required_extends(inherited_schema['_extends'], required_property)
+                logging.error(f'Missing required property "{required_property}" in the schema definition.')
+            return
+
         if 'required' not in self.schema:
             return
 
         for required_property in self.schema['required']:
             if required_property not in self.schema['properties'].keys():
+                if '_extends' in self.schema:
+                    _check_required_extends(self.schema['_extends'], required_property)
+                    continue
                 logging.error(f'Missing required property "{required_property}" in the schema definition.')
 
     def validate(self):
         """
-        Runs all the tests defined in SchemaValidator.
+        Runs all the tests defined in SchemaTemplateValidator.
         """
         self.check_attype()
         self.check_extends()

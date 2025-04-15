@@ -1,7 +1,7 @@
 import logging
 import sys
 
-from openMINDS_validation.validation import SchemaValidator
+from openMINDS_validation.validation import SchemaTemplateValidator
 
 
 if __name__ == "__main__":
@@ -9,4 +9,4 @@ if __name__ == "__main__":
         logging.error("Usage: python validate_instance.py <src_file> <src_repository> <src_branch>")
         sys.exit(1)
 
-    SchemaValidator(sys.argv[1], sys.argv[2], sys.argv[3]).validate()
+    SchemaTemplateValidator(sys.argv[1], sys.argv[2], sys.argv[3]).validate()

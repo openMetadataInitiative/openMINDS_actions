@@ -1,3 +1,4 @@
+import base64
 import logging
 import os
 import re
@@ -68,6 +69,27 @@ def get_latest_version_commit(module):
     version_numbers.sort(key=Version, reverse=True)
     latest_branch_name = semantic_to_branchname[version_numbers[0]]
     return branch_commit_map[latest_branch_name]
+
+def fetch_remote_schema_extends(extends_value, version_file, version):
+    m = version_file[version]["modules"]
+    module_name_extends = extends_value.split('/')[1]
+    module = m.get(module_name_extends) or m.get(module_name_extends.upper())
+
+    if version == 'latest':
+        commit = get_latest_version_commit(module)
+    else:
+        commit = module['commit']
+
+    extends_url = f"https://api.github.com/repos/openMetadataInitiative/{Path(module['repository']).stem}/contents/{'/'.join(extends_value.split('/')[2:])}?ref={commit}"
+
+    try:
+        with urllib.request.urlopen(extends_url) as response:
+            response_formatted = json.load(response)
+            binary_content = base64.b64decode(response_formatted["content"])
+            return json.loads(binary_content.decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        logging.error(f"Error loading remote schema: {e}")
+        return None
 
 def find_openminds_class(version, class_name):
     """
