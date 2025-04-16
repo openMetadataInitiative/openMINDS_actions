@@ -1,0 +1,69 @@
+name: Schema Validator
+
+on:
+  workflow_call:
+    inputs:
+       branch:
+         description: 'The branch of the submodule the workflow was triggered for'
+         required: true
+         type: string
+       repository:
+         description: 'The repository of the submodule the workflow was triggered for'
+         required: true
+         type: string
+
+jobs:
+  validate-schema:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch full history to compare against the base branch
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.13
+
+      - name: Checkout openMINDS_actions repository
+        uses: actions/checkout@v3
+        with:
+          repository: openMetadataInitiative/openMINDS_actions
+          ref: main
+          path: openMINDS_actions # Checkout in a dedicated folder
+
+      - name: Validate schema
+        run: |
+          git checkout HEAD
+          git diff --name-only --diff-filter=AM HEAD^ HEAD | grep '\.json' > changed_files.txt || true
+          
+          validation_failed=false
+          pip install -r openMINDS_actions/requirements.txt
+          
+          if [ -s changed_files.txt ]; then
+            while IFS= read -r file; do
+              validation_output=$(python openMINDS_actions/validate_schema_template.py "$file" ${{ inputs.repository }} ${{ inputs.branch }} 2>&1 || true)
+              echo "$validation_output"
+              
+              if echo "$validation_output" | grep -E "SyntaxError|ValueError|Error|Invalid|JSONDecodeError" > /dev/null; then
+                echo "❌ Validation failed for $file"
+                validation_failed=true
+              else
+                echo "✅ Validation passed for $file"
+              fi
+            done < changed_files.txt
+            # If any validation failed, exit with a non-zero status
+            if [ "$validation_failed" = true ]; then
+              echo "❌ Some schemas failed validation."
+              exit 1
+            else
+              echo "✅ All schemas passed validation."
+            fi
+          else
+            echo "No schema to validate."
+          fi
+
+        shell: bash
