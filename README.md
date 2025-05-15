@@ -3,7 +3,12 @@
 [![GitHub][license-shield]][license-url]
 [![GitHub contributors][contributors-shield]][contributors-url]
 
-The **openMINDS Actions** repository hosts a collection of GitHub Actions workflows that automate CI/CD processes across the openMINDS framework.
+The **openMINDS Actions** repository hosts a collection of GitHub Actions workflows that automate CI/CD pipelines across the openMINDS framework.
+
+## How to contribute
+
+The openMINDS metadata framework is an open-source project and community contributions are highly appreciated.  
+If you want to contribute please follow our :arrow_right: [**contribution guidelines**][contribution-url].
 
 ## Funding and acknowledgements
 
@@ -21,6 +26,7 @@ The openMINDS metadata framework is closely collaborating with the [InterLex Pro
 [contributors-shield]: https://img.shields.io/github/contributors/openMetadataInitiative/openMINDS_actions
 [license-url]: https://raw.githubusercontent.com/openMetadataInitiative/openMINDS_actions/main/LICENSE
 [license-shield]: https://img.shields.io/github/license/openMetadataInitiative/openMINDS_actions
+[contribution-url]: https://openminds-documentation.readthedocs.io/en/latest/shared/contribution_guidelines.html
 [ebrains2-doi]: https://doi.org/10.3030/101147319
 [hiball-url]: https://bigbrainproject.org/hiball.html
 [hbp-sga1-doi]: https://doi.org/10.3030/720270
