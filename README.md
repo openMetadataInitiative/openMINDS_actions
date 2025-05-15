@@ -21,6 +21,7 @@ The openMINDS metadata framework is closely collaborating with the [InterLex Pro
 [contributors-shield]: https://img.shields.io/github/contributors/openMetadataInitiative/openMINDS_actions
 [license-url]: https://raw.githubusercontent.com/openMetadataInitiative/openMINDS_actions/main/LICENSE
 [license-shield]: https://img.shields.io/github/license/openMetadataInitiative/openMINDS_actions
+[ebrains2-doi]: https://doi.org/10.3030/101147319
 [hiball-url]: https://bigbrainproject.org/hiball.html
 [hbp-sga1-doi]: https://doi.org/10.3030/720270
 [hbp-sga2-doi]: https://doi.org/10.3030/785907
@@ -28,3 +29,5 @@ The openMINDS metadata framework is closely collaborating with the [InterLex Pro
 [hbp-website]: https://www.humanbrainproject.eu
 [incf-website]: https://www.incf.org
 [interlex-dashboard]: https://scicrunch.org/scicrunch/interlex/dashboard
+[ks-website]: https://knowledge-space.org
+[scicrunch-website]: https://scicrunch.org
