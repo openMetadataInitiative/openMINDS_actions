@@ -1,3 +1,11 @@
+<a href="/img/openMINDS_instances_logo_light.png">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="/img/openMINDS_actions_logo_dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="/img/openMINDS_actions_logo_light.png">
+    <img alt="openMINDS instances logo: created by R. Gazzotti, U. Schlegel, L. Zehl, C. Hagen Blixhavn" src="/img/openMINDS_actions_logo_light.png" title="openMINDS actions" align="right" height="70">
+  </picture>
+</a>
+
 # openMINDS Actions
 
 [![GitHub][license-shield]][license-url]
