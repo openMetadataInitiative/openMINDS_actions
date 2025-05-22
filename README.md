@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="/img/openMINDS_actions_logo_dark.png">
     <source media="(prefers-color-scheme: light)" srcset="/img/openMINDS_actions_logo_light.png">
-    <img alt="openMINDS actions logo: created by R. Gazzotti, U. Schlegel, L. Zehl, C. Hagen Blixhavn" src="/img/openMINDS_actions_logo_light.png" title="openMINDS actions" align="right" height="70">
+    <img alt="openMINDS actions" src="/img/openMINDS_actions_logo_light.png" title="Logo created by R. Gazzotti, U. Schlegel, L. Zehl, C. Hagen Blixhavn" align="right" height="70">
   </picture>
 </a>
 
@@ -11,12 +11,17 @@
 [![GitHub][license-shield]][license-url]
 [![GitHub contributors][contributors-shield]][contributors-url]
 
-The **openMINDS Actions** repository hosts a collection of GitHub Actions workflows that automate CI/CD pipelines across the openMINDS framework.
+The **openMINDS_actions** repository hosts a collection of GitHub Actions workflows that automate CI/CD pipelines across the openMINDS framework.
 
 ## How to contribute
 
 The openMINDS metadata framework is an open-source project and community contributions are highly appreciated.  
 If you want to contribute please follow our :arrow_right: [**contribution guidelines**][contribution-url].
+
+Contributions to openMINDS_actions should be raised and discussed on the :arrow_right: [**issue tracker**][issuetracker-actions]  
+
+General usage questions should be raised and discussed in our :arrow_right: [**community forum**][community-forum].  
+Alternatively you can email us: `support@openmetadatainitiative.org`
 
 ## Funding and acknowledgements
 
@@ -43,5 +48,6 @@ The openMINDS metadata framework is closely collaborating with the [InterLex Pro
 [hbp-website]: https://www.humanbrainproject.eu
 [incf-website]: https://www.incf.org
 [interlex-dashboard]: https://scicrunch.org/scicrunch/interlex/dashboard
+[issuetracker-actions]: https://github.com/openMetadataInitiative/openMINDS_actions/issues
 [ks-website]: https://knowledge-space.org
 [scicrunch-website]: https://scicrunch.org
