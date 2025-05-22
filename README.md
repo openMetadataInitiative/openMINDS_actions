@@ -40,6 +40,7 @@ The openMINDS metadata framework is closely collaborating with the [InterLex Pro
 [license-url]: https://raw.githubusercontent.com/openMetadataInitiative/openMINDS_actions/main/LICENSE
 [license-shield]: https://img.shields.io/github/license/openMetadataInitiative/openMINDS_actions
 [contribution-url]: https://openminds-documentation.readthedocs.io/en/latest/shared/contribution_guidelines.html
+[community-forum]: https://neurostars.org/t/about-the-openminds-category/31428
 [ebrains2-doi]: https://doi.org/10.3030/101147319
 [hiball-url]: https://bigbrainproject.org/hiball.html
 [hbp-sga1-doi]: https://doi.org/10.3030/720270
