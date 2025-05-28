@@ -44,7 +44,7 @@ jobs:
           git diff --name-only --diff-filter=AM HEAD^ HEAD | grep '\.json' > changed_files.txt || true
           
           validation_failed=false
-          uv pip install -r openMINDS_actions/requirements.txt
+          uv pip install --system -r openMINDS_actions/requirements.txt
           
           if [ -s changed_files.txt ]; then
             while IFS= read -r file; do
