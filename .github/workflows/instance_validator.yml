@@ -42,7 +42,7 @@ jobs:
               validation_output=$(python openMINDS_actions/validate_instance.py "$file" 2>&1 || true)
               echo "$validation_output"
               
-              if echo "$validation_output" | grep -E "SyntaxError|ValueError|Error|Invalid|JSONDecodeError" > /dev/null; then
+              if echo "$validation_output" | grep -iE "SyntaxError|ValueError|Error|Invalid|JSONDecodeError" > /dev/null; then
                 echo "❌ Validation failed for $file"
                 validation_failed=true
               else
