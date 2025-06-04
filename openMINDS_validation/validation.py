@@ -232,8 +232,10 @@ class InstanceValidator(object):
         if 'type' in openminds_class['properties'][property]:
             if openminds_class['properties'][property]['type'] == 'array'  and type(value) not in (list, type(None)):
                 logging.error(f'Invalid value type for property "{property}": expected an array.')
+            elif openminds_class['properties'][property]['type'] == 'string'  and type(value) not in (str, type(None)):
+                logging.error(f'Invalid value type for property "{property}": expected a string.')
         elif ('_embeddedTypes' or '_linkedTypes') in openminds_class['properties'][property] and type(value) not in (dict, type(None)):
-            logging.error(f'Invalid value type for property "{property}": expected a dict.')
+            logging.error(f'Invalid value type for property "{property}": expected a dictionary.')
 
     def check_property_constraint(self, instance=None, instance_type=None, openminds_class=None):
         """
