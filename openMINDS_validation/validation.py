@@ -149,7 +149,7 @@ class InstanceValidator(object):
             if instance is not None and '@id' in instance:
                 if ' ' in instance['@id']:
                     logging.error(f'White space detected for @id: "{instance["@id"]}".')
-                if instance['@id'].count('/') != 5:
+                if instance['@id'].startswith(self.namespaces.get('instances')) and instance['@id'].count('/') != 5:
                     logging.error(f'Unexpected number of "/" for @id: "{instance["@id"]}".')
 
         # TODO use a dictionary of abbreviations and Upper case name
