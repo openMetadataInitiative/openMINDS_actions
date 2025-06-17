@@ -15,8 +15,19 @@ on:
 jobs:
   validate-schema:
     runs-on: ubuntu-latest
-
+          
     steps:
+      - name: Determine repository and branch
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "REPO=${{ github.event.pull_request.head.repo.full_name }}" >> "$GITHUB_OUTPUT"
+            echo "BRANCH=${{ github.event.pull_request.head.ref }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "REPO=${{ inputs.repository }}" >> "$GITHUB_OUTPUT"
+            echo "BRANCH=${{ inputs.branch }}" >> "$GITHUB_OUTPUT"
+          fi
+          
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -48,7 +59,7 @@ jobs:
           
           if [ -s changed_files.txt ]; then
             while IFS= read -r file; do
-              validation_output=$(python openMINDS_actions/validate_schema_template.py "$file" ${{ inputs.repository }} ${{ inputs.branch }} 2>&1 || true)
+              validation_output=$(python openMINDS_actions/validate_schema_template.py "$file" ${{ steps.vars.outputs.REPO }} ${{ steps.vars.outputs.BRANCH }} 2>&1 || true)
               echo "$validation_output"
               
               if echo "$validation_output" | grep -iE "SyntaxError|ValueError|Error|Invalid|JSONDecodeError" > /dev/null; then
