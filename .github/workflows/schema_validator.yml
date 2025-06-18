@@ -21,8 +21,8 @@ jobs:
         id: vars
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "REPO=${{ github.event.pull_request.head.repo.full_name }}" >> "$GITHUB_OUTPUT"
-            echo "BRANCH=${{ github.event.pull_request.head.ref }}" >> "$GITHUB_OUTPUT"
+            echo "REPO=${{ github.event.pull_request.base.repo.full_name }}" >> "$GITHUB_OUTPUT"
+            echo "BRANCH=${{ github.event.pull_request.base.ref }}" >> "$GITHUB_OUTPUT"
           else
             echo "REPO=${{ inputs.repository }}" >> "$GITHUB_OUTPUT"
             echo "BRANCH=${{ inputs.branch }}" >> "$GITHUB_OUTPUT"
