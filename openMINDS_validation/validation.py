@@ -97,11 +97,11 @@ class SchemaTemplateValidator(object):
                 logging.error(f'Missing required property "{required_property}" in the schema definition.')
             return
 
-        def _retrieve_inherited_required_propertie(extends_path):
+        def _retrieve_inherited_required_properties(extends_path):
             schema = load_schema(extends_path)
             inherited_properties_required = schema.get('required', [])
             if '_extends' in schema:
-                inherited_properties_required.extend(_retrieve_inherited_required_propertie(schema['_extends']))
+                inherited_properties_required.extend(_retrieve_inherited_required_properties(schema['_extends']))
             return inherited_properties_required
 
         if 'required' not in self.schema:
@@ -111,7 +111,7 @@ class SchemaTemplateValidator(object):
 
         required_properties = self.schema.get('required', [])
         if '_extends' in self.schema:
-            required_properties.extend(_retrieve_inherited_required_propertie(self.schema['_extends']))
+            required_properties.extend(_retrieve_inherited_required_properties(self.schema['_extends']))
 
         for required_property in required_properties:
             if required_property not in self.schema['properties'].keys():
