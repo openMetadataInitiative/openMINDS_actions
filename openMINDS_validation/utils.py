@@ -17,6 +17,8 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s'
 )
 
+_remote_schema_cache = {}
+
 class VocabManager:
     def __init__(self, path_vocab_types, path_vocab_properties):
         # TODO handle dev
@@ -71,6 +73,9 @@ def get_latest_version_commit(module):
     return branch_commit_map[latest_branch_name]
 
 def fetch_remote_schema_extends(extends_value, version_file, version):
+    if extends_value in _remote_schema_cache:
+        return _remote_schema_cache[extends_value]
+
     m = version_file[version]["modules"]
     module_name_extends = extends_value.split('/')[1]
     module = m.get(module_name_extends) or m.get(module_name_extends.upper())
@@ -85,8 +90,10 @@ def fetch_remote_schema_extends(extends_value, version_file, version):
     try:
         with urllib.request.urlopen(extends_url) as response:
             response_formatted = json.load(response)
-            binary_content = base64.b64decode(response_formatted["content"])
-            return json.loads(binary_content.decode("utf-8"))
+            decoded = base64.b64decode(response_formatted["content"]).decode("utf-8")
+            schema = json.loads(decoded)
+            _remote_schema_cache[extends_value] = schema
+            return schema
     except urllib.error.HTTPError as e:
         logging.error(f"Error loading remote schema: {e}")
         return None
