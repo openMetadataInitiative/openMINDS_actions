@@ -162,7 +162,7 @@ class InstanceValidator(object):
         for property in self.instance:
             if self.instance[property] is not None and type(self.instance[property]) is dict and '@id' in self.instance[property]:
                 _check_instance_id_convention(self.instance[property])
-            if type(self.instance[property]) is list and len(self.instance[property]) > 0:
+            if type(self.instance[property]) is list and self.instance[property]:
                 for instance_element in self.instance[property]:
                     _check_instance_id_convention(instance_element)
 
@@ -214,6 +214,29 @@ class InstanceValidator(object):
                 continue
             self._nested_instance(instance[property], self.check_property_existence, instance_type)
 
+    def _check_property_value_format(self, instance, property, openminds_class, required:bool=False):
+        """
+        Validates value format for instance properties against the vocabulary for the given version and type.
+        """
+        #TODO add type validation
+        value = instance[property]
+        if value in ('', ' '):
+            msg = f'Invalid value "{value}" for property "{property}".'
+            logging.error(msg) if required else logging.warning(msg)
+        elif required and value is None:
+            logging.error(f'Invalid value "{value}" for "{property}".')
+
+        elif isinstance(value, list) and not value:
+            logging.warning(f'Empty array for "{property}".')
+
+        if 'type' in openminds_class['properties'][property]:
+            if openminds_class['properties'][property]['type'] == 'array'  and type(value) not in (list, type(None)):
+                logging.error(f'Invalid value type for property "{property}": expected an array.')
+            elif openminds_class['properties'][property]['type'] == 'string'  and type(value) not in (str, type(None)):
+                logging.error(f'Invalid value type for property "{property}": expected a string.')
+        elif ('_embeddedTypes' or '_linkedTypes') in openminds_class['properties'][property] and type(value) not in (dict, type(None)):
+            logging.error(f'Invalid value type for property "{property}": expected a dictionary.')
+
     def check_property_constraint(self, instance=None, instance_type=None, openminds_class=None):
         """
         Validates the presence and values of required and optional properties in the instance.
@@ -236,16 +259,15 @@ class InstanceValidator(object):
         for required_property in required_properties:
             if required_property not in instance:
                 logging.error(f'Missing required property "{required_property}".')
-            elif required_property in instance and instance[required_property] in (None, '', ' '):
-                logging.error(f'Required property "{required_property}" is not defined.')
-            if required_property in instance:
+            else:
+                self._check_property_value_format(instance, required_property, openminds_class, required=True)
                 self._nested_instance(instance[required_property], self.check_property_constraint, instance_type)
+
         for optional_property in optional_properties:
             if optional_property not in instance:
                 logging.error(f'Missing optional property "{optional_property}".')
-            elif optional_property in instance and instance[optional_property] in ('', ' '):
-                logging.warning(f'Unexpected value "{instance[optional_property]}" for "{optional_property}".')
-            if optional_property in instance:
+            else:
+                self._check_property_value_format(instance, optional_property, openminds_class)
                 self._nested_instance(instance[optional_property], self.check_property_constraint, instance_type)
 
     def check_minimal_jsonld_structure(self):
