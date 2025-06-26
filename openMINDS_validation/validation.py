@@ -229,7 +229,6 @@ class InstanceValidator(object):
         """
         Validates value format for instance properties against the vocabulary for the given version and type.
         """
-        #TODO add type validation
         value = instance[property]
         if value in ('', ' '):
             msg = f'Invalid value "{value}" for property "{property}".'
