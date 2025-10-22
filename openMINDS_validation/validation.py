@@ -234,7 +234,7 @@ class InstanceValidator(object):
             msg = f'Invalid value "{value}" for property "{property}".'
             logging.error(msg) if required else logging.warning(msg)
         elif required and value is None:
-            logging.error(f'Invalid value "{value}" for "{property}".')
+            logging.error(f'Missing required value for "{property}".')
 
         elif isinstance(value, list) and not value:
             logging.warning(f'Empty array for "{property}".')
