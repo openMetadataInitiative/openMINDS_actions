@@ -152,7 +152,8 @@ class InstanceValidator(object):
 
         sanitized = (
             name
-            .translate(str.maketrans("", "", "()'"))
+            .translate(str.maketrans("", " ", "(),'\""))
+            .replace(".", "Dot ")
             .replace("/", "_")
             .replace("&", "And")
         )
