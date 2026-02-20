@@ -1,6 +1,7 @@
 import re
 import logging
 import json
+import unicodedata
 import urllib.request
 import urllib.error
 from pathlib import Path, PurePath
@@ -139,6 +140,7 @@ class InstanceValidator(object):
         self.namespaces = Versions("./versions.json").versions[self.version]['namespaces']
         self.vocab = VocabManager("./types.json", "./properties.json")
         self.instance = load_json(absolute_path)
+        self._id_instance_name = self.instance['@id'].split('/')[-1]
         self._type_schema_name = None
         self._id_schema_name = None
 
@@ -149,6 +151,34 @@ class InstanceValidator(object):
         elif isinstance(value, list):
             for item in value:
                 self._nested_instance(item, function, instance_type)
+
+    def _check_atid_naming(self):
+        """
+        Validates @id entity against openMINDS naming convention derived from the abbreviation otname property.
+        The abbreviation property is used when present, otherwise, the name property is used.
+        """
+        name = self.instance['abbreviation'] if 'abbreviation' in self.instance else self.instance['name'] if 'name' in self.instance else None
+        if not name:
+            return logging.warning(f'Property abbreviation/name is missing.')
+
+        sanitized = (
+            name
+            .translate(str.maketrans("", " ", "(),'\""))
+            .replace(".", "Dot ")
+            .replace("/", "_")
+            .replace("&", "And")
+        )
+        normalized = unicodedata.normalize("NFKD", sanitized)
+        normalized = normalized.encode("ascii", "ignore").decode("ascii")
+
+        words = normalized.split()
+        if not words:
+            return logging.warning(f'Property name is empty.')
+
+        first = words[0] if words[0].isupper() or (all(w[:1].isupper() for w in words if w[0].isalpha() and w.lower() not in {"and", "by"})) else words[0].lower()
+        expected = first + ''.join(w if w.isupper() else w.title() for w in words[1:])
+        if self._id_instance_name != expected:
+            logging.warning(f'Unexpected @id entity: "{self._id_instance_name}" (full @id: {self.instance["@id"]}), (expected: {expected}).')
 
     def check_atid_convention(self):
         """
@@ -163,12 +193,10 @@ class InstanceValidator(object):
                 if instance['@id'].startswith(self.namespaces.get('instances')) and instance['@id'].count('/') != 5:
                     logging.error(f'Unexpected number of "/" for @id: "{instance["@id"]}".')
 
-        # TODO use a dictionary of abbreviations and Upper case name
-        _id_instance_name = self.instance['@id'].split('/')[-1]
-        # TODO instead of using filename (abbreviations and other properties could be used)
-        if _id_instance_name != self.file_name:
-            logging.error(f'Mismatch between @id entity "{_id_instance_name}" and file name "{self.file_name}".')
+        if self._id_instance_name != self.file_name:
+            logging.error(f'Mismatch between @id entity "{self._id_instance_name}" and file name "{self.file_name}".')
         _check_instance_id_convention(self.instance)
+        self._check_atid_naming()
 
         for property in self.instance:
             if self.instance[property] is not None and type(self.instance[property]) is dict and '@id' in self.instance[property]:
