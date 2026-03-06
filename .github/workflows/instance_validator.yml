@@ -45,8 +45,6 @@ jobs:
               if echo "$validation_output" | grep -iE "SyntaxError|ValueError|Error|Invalid|JSONDecodeError" > /dev/null; then
                 echo "❌ Validation failed for $file"
                 validation_failed=true
-              else
-                echo "✅ Validation passed for $file"
               fi
             done < changed_files.txt
             # If any validation failed, exit with a non-zero status
