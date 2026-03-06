@@ -59,14 +59,14 @@ jobs:
           
           if [ -s changed_files.txt ]; then
             while IFS= read -r file; do
-              validation_output=$(python openMINDS_actions/validate_schema_template.py "$file" ${{ steps.vars.outputs.REPO }} ${{ steps.vars.outputs.BRANCH }} 2>&1 || true)
-              echo "$validation_output"
+              validation_output=$(python openMINDS_actions/validate_schema_template.py "$file" ${{ steps.vars.outputs.REPO }} ${{ steps.vars.outputs.BRANCH }} 2>&1 || true
               
               if echo "$validation_output" | grep -iE "SyntaxError|ValueError|Error|Invalid|JSONDecodeError" > /dev/null; then
                 echo "❌ Validation failed for $file"
                 validation_failed=true
-              else
-                echo "✅ Validation passed for $file"
+              elif echo "$validation_output" | grep -iE "WARNING" > /dev/null; then
+                echo "$validation_output"
+                echo "⚠️ Validation passed with warnings for $file"
               fi
             done < changed_files.txt
             # If any validation failed, exit with a non-zero status
