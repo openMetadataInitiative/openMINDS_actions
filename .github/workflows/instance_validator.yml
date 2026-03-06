@@ -47,7 +47,7 @@ jobs:
                 validation_failed=true
               elif echo "$validation_output" | grep -iE "WARNING" > /dev/null; then
                 echo "$validation_output"
-                echo "✅ Validation passed for $file"
+                echo "⚠️ Validation passed with warnings for $file"
               fi
             done < changed_files.txt
             # If any validation failed, exit with a non-zero status
