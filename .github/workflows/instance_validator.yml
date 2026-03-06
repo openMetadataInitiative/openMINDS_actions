@@ -40,9 +40,9 @@ jobs:
           if [ -s changed_files.txt ]; then
             while IFS= read -r file; do
               validation_output=$(python openMINDS_actions/validate_instance.py "$file" 2>&1 || true)
-              echo "$validation_output"
               
               if echo "$validation_output" | grep -iE "SyntaxError|ValueError|Error|Invalid|JSONDecodeError" > /dev/null; then
+                echo "$validation_output"
                 echo "❌ Validation failed for $file"
                 validation_failed=true
               fi
