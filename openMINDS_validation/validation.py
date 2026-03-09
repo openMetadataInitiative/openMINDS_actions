@@ -220,6 +220,9 @@ class InstanceValidator(object):
             elif property not in self.vocab.vocab_properties:
                 logging.error(f'Unknown property "{property}".')
                 continue
+            elif self.version not in self.vocab.vocab_properties[property]["usedIn"]:
+                logging.error(f'Property "{property}" not available in version "{self.version}".')
+                continue
             elif instance['@type'] not in self.vocab.vocab_properties[property]["usedIn"][self.version]:
                 logging.error(f'Property "{property}" not available for type "{instance_type}" in version "{self.version}".')
                 continue
