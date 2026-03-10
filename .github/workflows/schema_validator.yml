@@ -59,7 +59,7 @@ jobs:
           
           if [ -s changed_files.txt ]; then
             while IFS= read -r file; do
-              validation_output=$(python openMINDS_actions/validate_schema_template.py "$file" ${{ steps.vars.outputs.REPO }} ${{ steps.vars.outputs.BRANCH }} 2>&1 || true
+              validation_output=$(python openMINDS_actions/validate_schema_template.py "$file" ${{ steps.vars.outputs.REPO }} ${{ steps.vars.outputs.BRANCH }} 2>&1 || true)
               
               if echo "$validation_output" | grep -iE "SyntaxError|ValueError|Error|Invalid|JSONDecodeError" > /dev/null; then
                 echo "❌ Validation failed for $file"
