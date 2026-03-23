@@ -181,6 +181,7 @@ class InstanceValidator(object):
             logging.error(f'Mismatch between @id entity "{self._id_instance_name}" and file name "{self.file_name}".')
         _check_instance_id_convention(self.instance)
 
+        # TODO add convention for the Accessibility library
         # @id naming convention
         name = self.instance.get('abbreviation') or self.instance.get('name')
         if not name:
