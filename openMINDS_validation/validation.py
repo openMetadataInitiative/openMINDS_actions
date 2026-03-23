@@ -1,10 +1,10 @@
 import re
 import logging
-import json
 import unicodedata
 import urllib.request
 import urllib.error
 from pathlib import Path, PurePath
+from typing import Optional
 
 from openMINDS_validation.utils import VocabManager, Versions, load_json, get_latest_version_commit, version_key, \
     find_openminds_class, clone_central, expand_jsonld, fetch_remote_schema_extends
@@ -133,23 +133,7 @@ class InstanceValidator(object):
         self._type_schema_name = None
         self._id_schema_name = None
 
-    def _nested_instance(self, value, function, instance_type):
-        if isinstance(value, dict):
-            function(value, instance_type)
-
-        elif isinstance(value, list):
-            for item in value:
-                self._nested_instance(item, function, instance_type)
-
-    def _check_atid_naming(self):
-        """
-        Validates @id entity against openMINDS naming convention derived from the abbreviation otname property.
-        The abbreviation property is used when present, otherwise, the name property is used.
-        """
-        name = self.instance['abbreviation'] if 'abbreviation' in self.instance else self.instance['name'] if 'name' in self.instance else None
-        if not name:
-            return logging.warning(f'Property abbreviation/name is missing.')
-
+    def _generate_expected_atid_name(name: str) -> Optional[str]:
         sanitized = (
             name
             .translate(str.maketrans("", " ", "(),'\""))
@@ -162,18 +146,28 @@ class InstanceValidator(object):
 
         words = normalized.split()
         if not words:
-            return logging.warning(f'Property name is empty.')
+            return None
 
-        first = words[0] if words[0].isupper() or (all(w[:1].isupper() for w in words if w[0].isalpha() and w.lower() not in {"and", "by"})) else words[0].lower()
-        expected = first + ''.join(w if w.isupper() else w.title() for w in words[1:])
-        if self._id_instance_name != expected:
-            logging.warning(f'Unexpected @id entity: "{self._id_instance_name}" (full @id: {self.instance["@id"]}), (expected: {expected}).')
+        first = words[0] if words[0].isupper() or (
+            all(w[:1].isupper() for w in words if w[0].isalpha() and w.lower() not in {"and", "by"})
+        ) else words[0].lower()
+
+        return first + ''.join(w if w.isupper() else w.title() for w in words[1:])
+
+    def _nested_instance(self, value, function, instance_type):
+        if isinstance(value, dict):
+            function(value, instance_type)
+
+        elif isinstance(value, list):
+            for item in value:
+                self._nested_instance(item, function, instance_type)
 
     def check_atid_convention(self):
         """
         Validates against:
             - White space in @id and embedded @id.
             - Differences between file name and @id.
+            - @id naming convention, using abbreviation if present, otherwise name.
         """
         def _check_instance_id_convention(instance):
             if instance is not None and '@id' in instance:
@@ -182,11 +176,24 @@ class InstanceValidator(object):
                 if instance['@id'].count('/') != 5:
                     logging.error(f'Unexpected number of "/" for @id: "{instance["@id"]}".')
 
+        # Differences between file name and @id
         if self._id_instance_name != self.file_name:
             logging.error(f'Mismatch between @id entity "{self._id_instance_name}" and file name "{self.file_name}".')
         _check_instance_id_convention(self.instance)
-        self._check_atid_naming()
 
+        # @id naming convention
+        name = self.instance.get('abbreviation') or self.instance.get('name')
+        if not name:
+            logging.warning('Property abbreviation/name is missing.')
+        else:
+            expected = self._generate_expected_atid_name(name)
+            if expected is None:
+                logging.warning('Property name is empty.')
+            elif self._id_instance_name != expected:
+                logging.warning(f'Unexpected @id entity: "{self._id_instance_name}" '
+                                f'(full @id: {self.instance["@id"]}), (expected: {expected}).')
+
+        # White space in @id and embedded @id
         for property in self.instance:
             if self.instance[property] is not None and type(self.instance[property]) is dict and '@id' in self.instance[property]:
                 _check_instance_id_convention(self.instance[property])
