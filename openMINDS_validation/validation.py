@@ -195,7 +195,7 @@ class InstanceValidator(object):
                     logging.error(f'Unexpected namespace for @type: "{self.instance["@type"]}".')
                 break
 
-        if self._id_schema_name in ['licenses', 'contentTypes']:
+        if self._id_schema_name in {'licenses', 'contentTypes', 'accessibilities'}:
             # self._type_schema_name is not using plural
             expected_type_name = self._id_schema_name[0].upper() + self._id_schema_name[1:-1]
         else:
