@@ -38,8 +38,15 @@ class Versions:
             path_versions)
         self.versions = load_json(path_versions)
 
-def load_json(path):
-    with open(path) as f:
+def check_newline_end_of_file(file_path):
+    with open(file_path, 'rb') as f:
+        f.seek(-2, 2)
+        if f.read(2) != b'}\n':
+            logging.error(f'No newline at end of file "{file_path}".')
+
+def load_json(file_path):
+    check_newline_end_of_file(file_path)
+    with open(file_path) as f:
         json_file = json.load(f)
     return json_file
 
