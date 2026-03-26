@@ -1,6 +1,5 @@
 import re
 import logging
-import json
 import urllib.request
 import urllib.error
 from pathlib import Path, PurePath
@@ -120,6 +119,23 @@ class SchemaTemplateValidator(object):
                     continue
                 logging.error(f'Missing required property "{required_property}" in the schema definition.')
 
+    def check_allowed_keys(self):
+        """
+        Validates that keys conform to the openMINDS schema specification.
+        """
+        for key in self.schema:
+            if key not in {"_categories", "_extends", "_type", "properties", "required"}:
+                logging.error(f'Unknown key "{key}".')
+
+        for property_name, property_definition in self.schema.get('properties', {}).items():
+            for key in property_definition:
+                if key not in {"_embeddedCategories", "_embeddedTypes", "_formats", "_instruction", "_linkedCategories", "_linkedTypes", "exclusiveMaximum", "exclusiveMinimum", "items", "maxItems", "maximum", "minItems", "minimum", "type", "uniqueItems"}:
+                    logging.error(f'Unknown key "{key}" under property "{property_name}".')
+                if key == "items":
+                    for items_key in property_definition.get('items', {}):
+                        if items_key not in {"_formats", "exclusiveMaximum", "exclusiveMinimum", "maximum", "minimum", "type"}:
+                            logging.error(f'Unknown key "{items_key}" under "items" for property "{property_name}".')
+
     def validate(self):
         """
         Runs all the tests defined in SchemaTemplateValidator.
@@ -127,6 +143,7 @@ class SchemaTemplateValidator(object):
         self.check_attype()
         self.check_extends()
         self.check_required()
+        self.check_allowed_keys()
 
 class InstanceValidator(object):
     def __init__(self, absolute_path):
