@@ -129,11 +129,11 @@ class SchemaTemplateValidator(object):
 
         for property_name, property_definition in self.schema.get('properties', {}).items():
             for key in property_definition:
-                if key not in {"_embeddedCategories", "_embeddedTypes", "_formats", "_instruction", "_linkedCategories", "_linkedTypes", "items", "minItems", "maxItems", "type", "uniqueItems"}:
+                if key not in {"_embeddedCategories", "_embeddedTypes", "_formats", "_instruction", "_linkedCategories", "_linkedTypes", "exclusiveMaximum", "exclusiveMinimum", "items", "maxItems", "maximum", "minItems", "minimum", "type", "uniqueItems"}:
                     logging.error(f'Unknown key "{key}" under property "{property_name}".')
                 if key == "items":
                     for items_key in property_definition.get('items', {}):
-                        if items_key not in {"_formats", "type"}:
+                        if items_key not in {"_formats", "exclusiveMaximum", "exclusiveMinimum", "maximum", "minimum", "type"}:
                             logging.error(f'Unknown key "{items_key}" under "items" for property "{property_name}".')
 
     def validate(self):
