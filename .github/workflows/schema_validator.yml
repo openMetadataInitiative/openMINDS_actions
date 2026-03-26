@@ -52,7 +52,7 @@ jobs:
       - name: Validate schema
         run: |
           git checkout HEAD
-          git diff --name-only --diff-filter=AM HEAD^ HEAD | grep '\.json' > changed_files.txt || true
+          git diff -M --name-only --diff-filter=AMR HEAD^ HEAD | grep '\.json' > changed_files.txt || true
           
           validation_failed=false
           uv pip install --system -r openMINDS_actions/requirements.txt
