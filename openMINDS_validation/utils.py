@@ -43,17 +43,13 @@ def check_newline_end_of_file(file_path):
         f.seek(0, 2)
         file_size = f.tell()
 
-        if file_size == 0:
-            logging.error(f'Unexpected file ending for "{file_path}": file is empty.')
+        if file_size < 2:
+            logging.error(f'File is too short to be a valid JSON file: "{file_path}".')
             return
 
         f.seek(-1, 2)
         if f.read(1) != b'\n':
             logging.error(f'No newline at end of file "{file_path}".')
-            return
-
-        if file_size < 2:
-            logging.error(f'File should end with a closing }} followed by a single newline: "{file_path}".')
             return
 
         f.seek(-2, 2)
