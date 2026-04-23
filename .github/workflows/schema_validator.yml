@@ -62,7 +62,7 @@ jobs:
               validation_output=$(python openMINDS_actions/validate_schema_template.py "$file" ${{ steps.vars.outputs.REPO }} ${{ steps.vars.outputs.BRANCH }} 2>&1 || true)
               
               if echo "$validation_output" | grep -iE "SyntaxError|ValueError|Error|Invalid|JSONDecodeError" > /dev/null; then
-                echo "❌ Validation failed for $file"
+                echo "❌ Validation failed for $file. Reason: $validation_output"
                 validation_failed=true
               elif echo "$validation_output" | grep -iE "WARNING" > /dev/null; then
                 echo "$validation_output"
