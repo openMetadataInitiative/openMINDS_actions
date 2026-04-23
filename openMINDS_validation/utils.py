@@ -4,6 +4,7 @@ import os
 import re
 import shutil
 import json
+import ssl
 import urllib.request
 import urllib.error
 
@@ -18,6 +19,10 @@ logging.basicConfig(
 )
 
 _remote_schema_cache = {}
+
+
+class DownloadError(RuntimeError):
+    pass
 
 class VocabManager:
     def __init__(self, path_vocab_types, path_vocab_properties):
@@ -50,11 +55,23 @@ def load_json(file_path):
         json_file = json.load(f)
     return json_file
 
+def _format_download_error(url, path, error):
+    if isinstance(error, urllib.error.URLError) and isinstance(error.reason, ssl.SSLCertVerificationError):
+        reason = "SSL certificate verification failed. Check your local Python certificate store."
+    else:
+        reason = str(error)
+    return f'Failed to download "{url}" to "{path}": {reason}'
+
 def download_file(url, path):
     try:
         urllib.request.urlretrieve(url, path)
     except (urllib.error.URLError, IOError) as e:
-        logging.error(e)
+        has_local_fallback = os.path.exists(path) and os.path.getsize(path) > 0
+        message = _format_download_error(url, path, e)
+        if has_local_fallback:
+            logging.warning(f"{message} Using existing local file instead.")
+            return
+        raise DownloadError(message) from e
 
 def clone_central(refetch:bool=False):
     if refetch and os.path.exists("sources"):
