@@ -85,30 +85,58 @@ class SchemaTemplateValidator(object):
         """
         Validates required properties against the properties defined in the schema definition.
         """
-        def _check_required_extends(extends_value, required_property):
-            # Local case
-            if not extends_value.startswith("/") :
-                path_extends_schema = './schemas/' + extends_value
-                inherited_schema = load_json(path_extends_schema)
-            # Remote case
-            else:
-                inherited_schema = fetch_remote_schema_extends(extends_value, self.version_file, self.openMINDS_build_version)
+        def load_schema(path):
+            if path.startswith("/"):
+                return fetch_remote_schema_extends(path, self.version_file, self.openMINDS_build_version)
+            return load_json(f'./schemas/{path}')
 
-            if required_property not in inherited_schema['properties']:
-                if '_extends' in inherited_schema:
-                    return _check_required_extends(inherited_schema['_extends'], required_property)
+        def _check_required_extends(extends_path, required_property):
+            schema = load_schema(extends_path)
+            if required_property not in schema['properties']:
+                if '_extends' in schema:
+                    return _check_required_extends(schema['_extends'], required_property)
                 logging.error(f'Missing required property "{required_property}" in the schema definition.')
             return
 
+        def _retrieve_inherited_required_properties(extends_path):
+            schema = load_schema(extends_path)
+            inherited_properties_required = schema.get('required', [])
+            if '_extends' in schema:
+                inherited_properties_required.extend(_retrieve_inherited_required_properties(schema['_extends']))
+            return inherited_properties_required
+
         if 'required' not in self.schema:
             return
+        if '_type' not in self.schema and '_extends' not in self.schema:
+            return
 
-        for required_property in self.schema['required']:
+        required_properties = self.schema.get('required', [])
+        if '_extends' in self.schema:
+            required_properties.extend(_retrieve_inherited_required_properties(self.schema['_extends']))
+
+        for required_property in required_properties:
             if required_property not in self.schema['properties'].keys():
                 if '_extends' in self.schema:
                     _check_required_extends(self.schema['_extends'], required_property)
                     continue
                 logging.error(f'Missing required property "{required_property}" in the schema definition.')
+
+    def check_allowed_keys(self):
+        """
+        Validates that keys conform to the openMINDS schema specification.
+        """
+        for key in self.schema:
+            if key not in {"_categories", "_extends", "_type", "properties", "required"}:
+                logging.error(f'Unknown key "{key}".')
+
+        for property_name, property_definition in self.schema.get('properties', {}).items():
+            for key in property_definition:
+                if key not in {"_embeddedCategories", "_embeddedTypes", "_formats", "_instruction", "_linkedCategories", "_linkedTypes", "exclusiveMaximum", "exclusiveMinimum", "items", "maxItems", "maximum", "minItems", "minimum", "type", "uniqueItems"}:
+                    logging.error(f'Unknown key "{key}" under property "{property_name}".')
+                if key == "items":
+                    for items_key in property_definition.get('items', {}):
+                        if items_key not in {"_formats", "exclusiveMaximum", "exclusiveMinimum", "maximum", "minimum", "type"}:
+                            logging.error(f'Unknown key "{items_key}" under "items" for property "{property_name}".')
 
     def validate(self):
         """
@@ -117,6 +145,7 @@ class SchemaTemplateValidator(object):
         self.check_attype()
         self.check_extends()
         self.check_required()
+        self.check_allowed_keys()
 
 class InstanceValidator(object):
     def __init__(self, absolute_path):
@@ -173,7 +202,7 @@ class InstanceValidator(object):
             if instance is not None and '@id' in instance:
                 if ' ' in instance['@id']:
                     logging.error(f'White space detected for @id: "{instance["@id"]}".')
-                if instance['@id'].count('/') != 5:
+                if instance['@id'].startswith(self.namespaces.get('instances')) and instance['@id'].count('/') != 5:
                     logging.error(f'Unexpected number of "/" for @id: "{instance["@id"]}".')
 
         # Differences between file name and @id
@@ -198,7 +227,7 @@ class InstanceValidator(object):
         for property in self.instance:
             if self.instance[property] is not None and type(self.instance[property]) is dict and '@id' in self.instance[property]:
                 _check_instance_id_convention(self.instance[property])
-            if type(self.instance[property]) is list and len(self.instance[property]) > 0:
+            if type(self.instance[property]) is list and self.instance[property]:
                 for instance_element in self.instance[property]:
                     _check_instance_id_convention(instance_element)
 
@@ -220,11 +249,13 @@ class InstanceValidator(object):
                     logging.error(f'Unexpected namespace for @type: "{self.instance["@type"]}".')
                 break
 
-        if self._id_schema_name in ['licenses', 'contentTypes']:
+        if self._id_schema_name in {'licenses', 'contentTypes', 'accessibilities'}:
             # self._type_schema_name is not using plural
-            expected_type_name = self._id_schema_name[0].upper() + self._id_schema_name[1:-1]
-        else:
-            expected_type_name = self._id_schema_name[0].upper() + self._id_schema_name[1:]
+            if self._id_schema_name.endswith("ies"):
+                expected_type_name = self._id_schema_name[:-3] + "y"
+            elif self._id_schema_name.endswith("s"):
+                expected_type_name = self._id_schema_name[:-1]
+            expected_type_name = expected_type_name[:1].upper() + expected_type_name[1:]
         if expected_type_name != self._type_schema_name:
             logging.error(f'Mismatch between @id schema name "{self._id_schema_name}" and @type schema name "{self._type_schema_name}".')
 
@@ -245,10 +276,35 @@ class InstanceValidator(object):
             elif property not in self.vocab.vocab_properties:
                 logging.error(f'Unknown property "{property}".')
                 continue
+            elif self.version not in self.vocab.vocab_properties[property]["usedIn"]:
+                logging.error(f'Property "{property}" not available in version "{self.version}".')
+                continue
             elif instance['@type'] not in self.vocab.vocab_properties[property]["usedIn"][self.version]:
                 logging.error(f'Property "{property}" not available for type "{instance_type}" in version "{self.version}".')
                 continue
             self._nested_instance(instance[property], self.check_property_existence, instance_type)
+
+    def _check_property_value_format(self, instance, property, openminds_class, required:bool=False):
+        """
+        Validates value format for instance properties against the vocabulary for the given version and type.
+        """
+        value = instance[property]
+        if value in ('', ' '):
+            msg = f'Invalid value "{value}" for property "{property}".'
+            logging.error(msg) if required else logging.warning(msg)
+        elif required and value is None:
+            logging.error(f'Missing required value for "{property}".')
+
+        elif isinstance(value, list) and not value:
+            logging.warning(f'Empty array for "{property}".')
+
+        if 'type' in openminds_class['properties'][property]:
+            if openminds_class['properties'][property]['type'] == 'array'  and type(value) not in (list, type(None)):
+                logging.error(f'Invalid value type for property "{property}": expected an array.')
+            elif openminds_class['properties'][property]['type'] == 'string'  and type(value) not in (str, type(None)):
+                logging.error(f'Invalid value type for property "{property}": expected a string.')
+        elif ('_embeddedTypes' or '_linkedTypes') in openminds_class['properties'][property] and type(value) not in (dict, type(None)):
+            logging.error(f'Invalid value type for property "{property}": expected a dictionary.')
 
     def check_property_constraint(self, instance=None, instance_type=None, openminds_class=None):
         """
@@ -272,16 +328,15 @@ class InstanceValidator(object):
         for required_property in required_properties:
             if required_property not in instance:
                 logging.error(f'Missing required property "{required_property}".')
-            elif required_property in instance and instance[required_property] in (None, '', ' '):
-                logging.error(f'Required property "{required_property}" is not defined.')
-            if required_property in instance:
+            else:
+                self._check_property_value_format(instance, required_property, openminds_class, required=True)
                 self._nested_instance(instance[required_property], self.check_property_constraint, instance_type)
+
         for optional_property in optional_properties:
             if optional_property not in instance:
                 logging.error(f'Missing optional property "{optional_property}".')
-            elif optional_property in instance and instance[optional_property] in ('', ' '):
-                logging.warning(f'Unexpected value "{instance[optional_property]}" for "{optional_property}".')
-            if optional_property in instance:
+            else:
+                self._check_property_value_format(instance, optional_property, openminds_class)
                 self._nested_instance(instance[optional_property], self.check_property_constraint, instance_type)
 
     def check_minimal_jsonld_structure(self):
