@@ -40,9 +40,21 @@ class Versions:
 
 def check_newline_end_of_file(file_path):
     with open(file_path, 'rb') as f:
-        f.seek(-2, 2)
-        if f.read(2) != b'}\n':
+        f.seek(0, 2)
+        file_size = f.tell()
+
+        if file_size < 2:
+            logging.error(f'File is too short to be a valid JSON file: "{file_path}".')
+            return
+
+        f.seek(-1, 2)
+        if f.read(1) != b'\n':
             logging.error(f'No newline at end of file "{file_path}".')
+            return
+
+        f.seek(-2, 2)
+        if f.read(1) != b'}':
+            logging.error(f'File should end with a closing }} followed by a single newline: "{file_path}".')
 
 def load_json(file_path):
     check_newline_end_of_file(file_path)
