@@ -212,13 +212,15 @@ class InstanceValidator(object):
                     logging.error(f'Unexpected namespace for @type: "{self.instance["@type"]}".')
                 break
 
+        expected_type_name = self._id_schema_name
         if self._id_schema_name in {'licenses', 'contentTypes', 'accessibilities'}:
             # self._type_schema_name is not using plural
             if self._id_schema_name.endswith("ies"):
                 expected_type_name = self._id_schema_name[:-3] + "y"
             elif self._id_schema_name.endswith("s"):
                 expected_type_name = self._id_schema_name[:-1]
-            expected_type_name = expected_type_name[:1].upper() + expected_type_name[1:]
+        expected_type_name = expected_type_name[:1].upper() + expected_type_name[1:]
+            
         if expected_type_name != self._type_schema_name:
             logging.error(f'Mismatch between @id schema name "{self._id_schema_name}" and @type schema name "{self._type_schema_name}".')
 
