@@ -31,11 +31,15 @@ class VocabManager:
 
 
 class Versions:
-    def __init__(self, path_versions):
-        # TODO handle dev, update it to download schema sources for improved validation
-        download_file(
-            "https://raw.githubusercontent.com/openMetadataInitiative/openMINDS/refs/heads/pipeline/versions.json",
-            path_versions)
+    def __init__(self, path_versions, branch="latest"):
+        if branch == "dev":
+            download_file(
+                "https://raw.githubusercontent.com/openMetadataInitiative/openMINDS/refs/heads/pipeline/versions-dev.json",
+                path_versions)
+        else:
+            download_file(
+                "https://raw.githubusercontent.com/openMetadataInitiative/openMINDS/refs/heads/pipeline/versions.json",
+                path_versions)
         self.versions = load_json(path_versions)
 
 def check_newline_end_of_file(file_path):

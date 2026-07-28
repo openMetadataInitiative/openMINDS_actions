@@ -20,7 +20,7 @@ class SchemaTemplateValidator(object):
         self.branch = branch
         self.openMINDS_build_version = None
 
-        self.version_file = Versions("./versions.json").versions
+        self.version_file = Versions("./versions.json", self.branch).versions
 
     def check_attype(self):
         """
@@ -31,6 +31,11 @@ class SchemaTemplateValidator(object):
             type_schema_name = re.split("[:/]", self.schema['_type'])[-1]
             if not type_schema_name[0].isupper():
                 logging.error(f'First character of _type "{type_schema_name}" should be uppercase.')
+
+    def check_repository(self):
+        latest_modules = self.version_file["latest"]["modules"]
+        if not any(submodule.get("repository") == self.repository for submodule in latest_modules.values()):
+            logging.error(f'Repository "{self.repository}" is not registered in the "latest" module of the openMINDS version file.')
 
     def check_extends(self):
         """
@@ -140,6 +145,7 @@ class SchemaTemplateValidator(object):
         """
         Runs all the tests defined in SchemaTemplateValidator.
         """
+        self.check_repository()
         self.check_attype()
         self.check_extends()
         self.check_required()
