@@ -31,7 +31,7 @@ class VocabManager:
 
 
 class Versions:
-    def __init__(self, path_versions, branch="latest"):
+    def __init__(self, path_versions, branch="default"):
         if branch == "dev":
             download_file(
                 "https://raw.githubusercontent.com/openMetadataInitiative/openMINDS/refs/heads/pipeline/versions-dev.json",
