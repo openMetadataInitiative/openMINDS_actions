@@ -6,7 +6,7 @@ import urllib.error
 from pathlib import Path, PurePath
 
 from openMINDS_validation.utils import VocabManager, Versions, load_json, get_latest_version_commit, version_key, \
-    find_openminds_class, clone_central, expand_jsonld, fetch_remote_schema_extends
+    find_openminds_class, clone_central, expand_jsonld, resolve_schema
 
 logging.basicConfig(
     level=logging.WARNING,
@@ -84,16 +84,8 @@ class SchemaTemplateValidator(object):
         """
         Validates required properties against the properties defined in the schema definition.
         """
-        def load_schema(path, parent_path=None):
-            if path.startswith("/"):
-                return fetch_remote_schema_extends(path, self.version_file, self.openMINDS_build_version)
-            if parent_path:
-                parent_dir = "/".join(parent_path.split("/")[:3])
-                return fetch_remote_schema_extends(f"{parent_dir}/{path}", self.version_file, self.openMINDS_build_version)
-            return load_json(f'./schemas/{path}'), None
-
         def collect_inherited(extends_path, parent_path=None):
-            schema = load_schema(extends_path, parent_path)
+            schema = resolve_schema(extends_path, self.version_file, self.openMINDS_build_version, parent_path)
             if schema is None:
                 logging.error(f'Missing parent schema "{extends_path}".')
                 return [], {}
