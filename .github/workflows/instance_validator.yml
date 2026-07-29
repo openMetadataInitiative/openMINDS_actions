@@ -43,7 +43,7 @@ jobs:
               
               if echo "$validation_output" | grep -iE "SyntaxError|ValueError|Error|Invalid|JSONDecodeError" > /dev/null; then
                 echo "$validation_output"
-                echo "❌ Validation failed for $file"
+                echo "::error file=$file::❌ Validation failed for $file"
                 validation_failed=true
               elif echo "$validation_output" | grep -iE "WARNING" > /dev/null; then
                 echo "$validation_output"
