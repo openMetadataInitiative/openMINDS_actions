@@ -5,7 +5,7 @@ import urllib.error
 from pathlib import Path, PurePath
 
 from openMINDS_validation.utils import VocabManager, Versions, load_json, get_latest_version_commit, version_key, \
-    find_openminds_class, clone_central, expand_jsonld, fetch_remote_schema_extends
+    find_openminds_class, clone_central, expand_jsonld, resolve_schema
 
 logging.basicConfig(
     level=logging.WARNING,
@@ -83,40 +83,32 @@ class SchemaTemplateValidator(object):
         """
         Validates required properties against the properties defined in the schema definition.
         """
-        def load_schema(path):
-            if path.startswith("/"):
-                return fetch_remote_schema_extends(path, self.version_file, self.openMINDS_build_version)
-            return load_json(f'./schemas/{path}')
-
-        def _check_required_extends(extends_path, required_property):
-            schema = load_schema(extends_path)
-            if required_property not in schema['properties']:
-                if '_extends' in schema:
-                    return _check_required_extends(schema['_extends'], required_property)
-                logging.error(f'Missing required property "{required_property}" in the schema definition.')
-            return
-
-        def _retrieve_inherited_required_properties(extends_path):
-            schema = load_schema(extends_path)
-            inherited_properties_required = schema.get('required', [])
+        def collect_inherited(extends_path, parent_path=None):
+            schema = resolve_schema(extends_path, self.version_file, self.openMINDS_build_version, parent_path)
+            if schema is None:
+                logging.error(f'Missing parent schema "{extends_path}".')
+                return [], {}
+            required = schema.get('required', [])
+            properties = schema.get('properties', {})
             if '_extends' in schema:
-                inherited_properties_required.extend(_retrieve_inherited_required_properties(schema['_extends']))
-            return inherited_properties_required
+                inherited_required, inherited_properties = collect_inherited(schema['_extends'], extends_path)
+                required.extend(inherited_required)
+                properties.update(inherited_properties)
+            return required, properties
 
-        if 'required' not in self.schema:
-            return
-        if '_type' not in self.schema and '_extends' not in self.schema:
+        if 'required' not in self.schema or ('_type' not in self.schema and '_extends' not in self.schema):
             return
 
         required_properties = self.schema.get('required', [])
+        all_properties = dict(self.schema.get('properties', {}))
+
         if '_extends' in self.schema:
-            required_properties.extend(_retrieve_inherited_required_properties(self.schema['_extends']))
+            inherited_required, inherited_properties = collect_inherited(self.schema['_extends'])
+            required_properties.extend(inherited_required)
+            all_properties.update(inherited_properties)
 
         for required_property in required_properties:
-            if required_property not in self.schema['properties'].keys():
-                if '_extends' in self.schema:
-                    _check_required_extends(self.schema['_extends'], required_property)
-                    continue
+            if required_property not in all_properties:
                 logging.error(f'Missing required property "{required_property}" in the schema definition.')
 
     def check_allowed_keys(self):

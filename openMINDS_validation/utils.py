@@ -92,6 +92,7 @@ def get_latest_version_commit(module):
     return branch_commit_map[latest_branch_name]
 
 def fetch_remote_schema_extends(extends_value, version_file, version):
+    # Return the cached schema if fetched.
     if extends_value in _remote_schema_cache:
         return _remote_schema_cache[extends_value]
 
@@ -111,11 +112,23 @@ def fetch_remote_schema_extends(extends_value, version_file, version):
             response_formatted = json.load(response)
             decoded = base64.b64decode(response_formatted["content"]).decode("utf-8")
             schema = json.loads(decoded)
+            # Cache the fetched schema.
             _remote_schema_cache[extends_value] = schema
             return schema
     except urllib.error.HTTPError as e:
         logging.error(f"Error loading remote schema: {e}")
         return None
+
+def resolve_schema(path, version_file, version, parent_path=None):
+    """
+    Resolve an extends reference and return the referenced schema.
+    """
+    if path.startswith("/"):
+        return fetch_remote_schema_extends(path, version_file, version)
+    if parent_path:
+        parent_dir = "/".join(parent_path.split("/")[:3])
+        return fetch_remote_schema_extends(f"{parent_dir}/{path}", version_file, version)
+    return load_json(f'./schemas/{path}')
 
 def find_openminds_class(version, class_name):
     """
