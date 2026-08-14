@@ -34,7 +34,7 @@ class SchemaTemplateValidator(object):
 
     def check_repository(self):
         latest_modules = self.version_file["latest"]["modules"]
-        if not any(submodule.get("repository") == self.repository for submodule in latest_modules.values()):
+        if not any(submodule.get("repository").split('/')[-1] == self.repository for submodule in latest_modules.values()):
             logging.error(f'Repository "{self.repository}" is not registered in the "latest" module of the openMINDS version file.')
 
     def check_extends(self):
