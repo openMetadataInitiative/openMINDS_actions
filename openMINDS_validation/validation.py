@@ -2,6 +2,7 @@ import re
 import logging
 import urllib.request
 import urllib.error
+from urllib.parse import urlparse
 from pathlib import Path, PurePath
 
 from openMINDS_validation.utils import VocabManager, Versions, load_json, get_latest_version_commit, version_key, \
@@ -34,8 +35,8 @@ class SchemaTemplateValidator(object):
 
     def check_repository(self):
         latest_modules = self.version_file["latest"]["modules"]
-        if not any(submodule.get("repository") == self.repository.split('/')[-1] for submodule in latest_modules.values()):
-            logging.error(f'Repository "{self.repository.split('/')[-1]}" is not registered in the "latest" module of the openMINDS version file.')
+        if not any(urlparse(submodule.get("repository")).path.strip("/").removesuffix(".git") == self.repository for submodule in latest_modules.values()):
+            logging.error(f'Repository "{self.repository}" is not registered in the "latest" module of the openMINDS version file.')
 
     def check_extends(self):
         """
