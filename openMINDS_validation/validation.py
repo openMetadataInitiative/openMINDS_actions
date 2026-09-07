@@ -23,6 +23,17 @@ class SchemaTemplateValidator(object):
 
         self.version_file = Versions("./versions.json", self.branch).versions
 
+    def check_file_name(self):
+        """
+        Validates the name of a file in a "schemas" directory:
+            - it ends in ".schema.tpl.json".
+        The openMINDS build discovers schemas by globbing for that suffix, so a file which does not
+        match is never enumerated and is excluded from the build without any warning.
+        """
+        path = PurePath(self.absolute_path)
+        if "schemas" in path.parts and not path.name.endswith(".schema.tpl.json"):
+            logging.error(f'Invalid file name "{path.name}": a schema template must end in ".schema.tpl.json")
+
     def check_attype(self):
         """
         Validates the format of the _type in the schema definition:
@@ -138,6 +149,7 @@ class SchemaTemplateValidator(object):
         """
         Runs all the tests defined in SchemaTemplateValidator.
         """
+        self.check_file_name()
         self.check_repository()
         self.check_attype()
         self.check_extends()
