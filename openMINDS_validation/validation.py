@@ -32,7 +32,7 @@ class SchemaTemplateValidator(object):
         """
         path = PurePath(self.absolute_path)
         if "schemas" in path.parts and not path.name.endswith(".schema.tpl.json"):
-            logging.error(f'Invalid file name "{path.name}": a schema template must end in ".schema.tpl.json")
+            logging.error(f'Invalid file name "{path.name}": a schema template must end in ".schema.tpl.json"')
 
     def check_attype(self):
         """
